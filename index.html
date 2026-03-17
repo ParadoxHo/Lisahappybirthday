@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>С днём рождения, Лиза!</title>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Caveat:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  min-height:100vh;
+  background:linear-gradient(145deg,#ffd0dd,#ffb6c1,#ff9eb5,#ff85a5,#ffb6d9);
+  background-size:400% 400%;
+  animation:gradientBG 10s ease infinite;
+  font-family:'Caveat', cursive;
+  overflow:hidden;
+}
+@keyframes gradientBG{0%{background-position:0%}50%{background-position:100%}100%{background-position:0%}}
+.title{
+  position:absolute; top:10px; width:100%; text-align:center;
+  font-family:'Great Vibes', cursive; font-size:clamp(3rem,10vw,5rem);
+  color:#8b1e5f; animation:glow 4s infinite;
+}
+@keyframes glow{0%,100%{filter:drop-shadow(0 0 3px #ff9eb5)}50%{filter:drop-shadow(0 0 8px #ff4080)}}
+.hint{position:absolute;bottom:15px;left:20px;background:rgba(255,240,245,.7);padding:.4rem .9rem;border-radius:40px;font-size:1.6rem;color:#a53f6c;}
+canvas{position:absolute;width:100vw;height:100vh;}
+</style>
+</head>
+<body>
+<h1 class="title">С днём рождения, Лиза</h1>
+<div class="hint">👉</div>
+<canvas id="birthdayCanvas"></canvas>
+<script>
+(function(){
+const canvas=document.getElementById('birthdayCanvas');
+const ctx=canvas.getContext('2d');
+let width,height,dpr;
+function resize(){
+  width=window.innerWidth;height=window.innerHeight;
+  dpr=window.devicePixelRatio||1;
+  canvas.width=width*dpr; canvas.height=height*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',resize); resize();
+
+// ЗВУК
+const pop=new Audio('icons/pop.mp3');
+function playPop(){ pop.currentTime=0; pop.play().catch(()=>{}); }
+
+// ПАЛИТРА
+const pinks=['#ff6fa8','#ff8fb8','#ff77aa','#ff9ec4','#ff5fa2','#ff85b5','#ff7fb0'];
+
+// КАРТИНКИ
+const imageFiles=[
+  {file:'cat1.png',size:100},{file:'cat2.png',size:105},{file:'cat3.png',size:95},
+  {file:'cat4.png',size:100},{file:'cat5.png',size:100},
+  {file:'heart1.png',size:90},{file:'heart2.png',size:95},{file:'heart3.png',size:85},
+  {file:'flower1.png',size:90},{file:'flower2.png',size:95},{file:'flower3.png',size:85},
+  {file:'yummy1.png',size:100},{file:'yummy2.png',size:90},{file:'yummy3.png',size:85},
+  {file:'gift1.png',size:95},{file:'gift2.png',size:90},{file:'gift3.png',size:100},
+  {file:'panties1.png',size:90},{file:'panties2.png',size:95},{file:'panties3.png',size:85},
+];
+const skelFiles=['skel1.png','skel2.png','skel3.png'];
+let regularImages=[],skelImages=[],imagesToLoad=imageFiles.length+skelFiles.length,loadedCount=0;
+
+// ЗАГРУЗКА
+function startAnimationIfReady(){ if(loadedCount===imagesToLoad){init();} }
+imageFiles.forEach(item=>{
+  const img=new Image(); img.src='icons/'+item.file; 
+  img.onload=img.onerror=()=>{regularImages.push({img,file:item.file,size:item.size});loadedCount++;startAnimationIfReady();}
+});
+skelFiles.forEach(f=>{
+  const img=new Image(); img.src='icons/'+f;
+  img.onload=img.onerror=()=>{skelImages.push({img,file:f,size:100});loadedCount++;startAnimationIfReady();}
+});
+
+// ПАРТИКЛЫ
+let particles=[];
+function createParticles(x,y,count=20){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*2*Math.PI,s=2+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,opacity:1,size:3+Math.random()*3,decay:0.02});
+  }
+}
+
+// ЛЕТАЮЩИЕ ЭЛЕМЕНТЫ
+const wishes=["Счастья","Любви","Нежности","Радости","Улыбок","Тепла","Мечты"];
+let elements=[],time=0;
+function createElement(){
+  let side=Math.floor(Math.random()*4),x,y,margin=100;
+  if(side===0){x=-margin;y=Math.random()*height;}
+  else if(side===1){x=width+margin;y=Math.random()*height;}
+  else if(side===2){x=Math.random()*width;y=-margin;}
+  else{x=Math.random()*width;y=height+margin;}
+  let dx=width/2-x,dy=height/2-y,len=Math.sqrt(dx*dx+dy*dy);
+  let vx=(dx/len)*(0.5+Math.random()*1.5),vy=(dy/len)*(0.5+Math.random()*1.5);
+  if(Math.random()>0.5){ // текст
+    const color=pinks[Math.floor(Math.random()*pinks.length)];
+    return {type:'text',text:wishes[Math.floor(Math.random()*wishes.length)],color,size:30+Math.random()*35,x,y,vx,vy,rot:(Math.random()-0.5)*0.2,rs:(Math.random()-0.5)*0.01,opacity:0,fly:false};
+  } else { // картинка
+    const imgData=regularImages[Math.floor(Math.random()*regularImages.length)];
+    return {type:'image',img:imgData.img,baseSize:imgData.size*(0.8+Math.random()*0.4),x,y,vx,vy,rot:(Math.random()-0.5)*0.2,rs:(Math.random()-0.5)*0.01,opacity:0,fly:false};
+  }
+}
+
+// INIT
+function init(){
+  for(let i=0;i<35;i++){ elements.push(createElement()); }
+  requestAnimationFrame(loop);
+}
+
+// LOOP
+function loop(){
+  update(); draw();
+  requestAnimationFrame(loop);
+}
+
+// UPDATE
+function update(){
+  time+=0.1;
+  const maxSpeed=3;
+  for(let i=elements.length-1;i>=0;i--){
+    let e=elements[i];
+    e.x+=e.vx; e.y+=e.vy; e.rot+=e.rs;
+    if(e.fly){ e.vy-=0.02; e.vx*=0.99; e.rot=0; e.rs=0; }
+    if(e.fly && e.y<-e.baseSize*2){ elements.splice(i,1); continue; }
+    if(!e.fly){ if(e.x<0)e.x=width;if(e.x>width)e.x=0;if(e.y<0)e.y=height;if(e.y>height)e.y=0; }
+    if(Math.abs(e.vx)>maxSpeed)e.vx=Math.sign(e.vx)*maxSpeed;
+    if(Math.abs(e.vy)>maxSpeed)e.vy=Math.sign(e.vy)*maxSpeed;
+    if(e.opacity<1)e.opacity+=0.02;
+  }
+
+  particles.forEach((p,i)=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.opacity-=p.decay; p.size*=0.97;
+    if(p.opacity<=0 || p.size<1) particles.splice(i,1);
+  });
+
+  if(elements.length<30){ elements.push(createElement()); }
+}
+
+// DRAW
+function draw(){
+  ctx.clearRect(0,0,width,height);
+  elements.forEach(e=>{
+    ctx.save(); ctx.globalAlpha=e.opacity; ctx.translate(e.x,e.y); ctx.rotate(e.rot);
+    if(e.type==='image'){ const s=e.baseSize||100; ctx.drawImage(e.img,-s/2,-s/2,s,s); }
+    else { ctx.font="300 "+e.size+"px Caveat"; ctx.fillStyle=e.color; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(e.text,0,0); }
+    ctx.restore();
+  });
+  particles.forEach(p=>{ ctx.save(); ctx.globalAlpha=p.opacity; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,2*Math.PI); ctx.fillStyle="#ff6fa8"; ctx.fill(); ctx.restore(); });
+}
+
+// CLICK
+canvas.addEventListener('click',e=>{
+  let rect=canvas.getBoundingClientRect();
+  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let radius=70*70; // меньше радиус
+  let hit=[];
+  elements.forEach((el,i)=>{
+    if(el.fly)return;
+    let dx=mx-el.x,dy=my-el.y;
+    if(dx*dx+dy*dy<radius) hit.push(i);
+  });
+  if(hit.length){
+    playPop();
+    let el=elements[hit[0]];
+    el.fly=true; el.vy=-4; el.vx=0;
+  }
+});
+
+// SPAWN TIMER
+setInterval(()=>{ if(elements.length<65)elements.push(createElement()); },4000);
+})();
+</script>
+</body>
+</html>
