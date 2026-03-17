@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>С днём рождения, Лиза!</title>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Caveat:wght@400..700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  min-height:100vh;
+  background:linear-gradient(145deg,#ffd0dd,#ffb6c1,#ff9eb5,#ff85a5,#ffb6d9);
+  background-size:400% 400%;
+  animation:gradientBG 10s ease infinite;
+  font-family:'Caveat', cursive;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+@keyframes gradientBG{
+  0%{background-position:0%}
+  50%{background-position:100%}
+  100%{background-position:0%}
+}
+.title{
+  position:absolute;
+  top:10px;
+  width:100%;
+  text-align:center;
+  font-family:'Great Vibes', cursive;
+  font-size:clamp(3rem,10vw,5rem);
+  color:#8b1e5f;
+  animation:glow 4s infinite;
+  z-index:5;
+}
+@keyframes glow{
+  0%,100%{filter:drop-shadow(0 0 3px #ff9eb5);}
+  50%{filter:drop-shadow(0 0 8px #ff4080);}
+}
+canvas{position:absolute;width:100vw;height:100vh;}
+</style>
+</head>
+<body>
+<h1 class="title">С днём рождения, Лиза</h1>
+<canvas id="birthdayCanvas"></canvas>
+<script>
+(async function(){
+const canvas=document.getElementById("birthdayCanvas");
+const ctx=canvas.getContext("2d");
+let width,height,dpr;
+
+function resize(){
+  width=window.innerWidth;
+  height=window.innerHeight;
+  dpr=window.devicePixelRatio||1;
+  canvas.width=width*dpr;
+  canvas.height=height*dpr;
+  canvas.style.width=width+"px";
+  canvas.style.height=height+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize",resize);
+resize();
+
+// MUSIC
+const bgMusic=new Audio("icons/q.mp3");
+bgMusic.loop=true;
+bgMusic.volume=0;
+
+// SOUND
+const pop=new Audio('icons/pop.mp3');
+function playPop(){pop.currentTime=0; pop.play().catch(()=>{});}
+
+// PARTICLES
+let particles=[];
+function createParticles(x,y){
+  for(let i=0;i<25;i++){
+    let a=Math.random()*Math.PI*2,s=1.5+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,size:4+Math.random()*4});
+  }
+}
+
+// IMAGES
+const imageFiles=[
+'cat1.png','cat2.png','cat3.png','cat4.png','cat5.png',
+'heart1.png','heart2.png','heart3.png',
+'flower1.png','flower2.png','flower3.png',
+'yummy1.png','yummy2.png','yummy3.png',
+'gift1.png','gift2.png','gift3.png',
+'panties1.png','panties2.png','panties3.png'
+];
+const skelFiles=['skel1.png','skel2.png','skel3.png'];
+const handFile='hand.png';
+
+// Загрузка всех изображений через Promise
+function loadImage(src){
+  return new Promise(res=>{
+    const img=new Image();
+    img.src=src;
+    img.onload=()=>res(img);
+  });
+}
+
+const regular = await Promise.all(imageFiles.map(f=>loadImage("icons/"+f)));
+const skels = await Promise.all(skelFiles.map(f=>loadImage("icons/"+f)));
+const handImage = await loadImage("icons/"+handFile);
+
+// ELEMENTS
+let elements=[],time=0;
+const wishes=["Счастья","Любви","Нежности","Радости","Улыбок","Тепла","Мечты"];
+let handClicked=false;
+let firstImageAdded=false;
+
+function shuffleImages(){
+  imagePool=regular.filter(i=>!i.src.includes('cat1.png'));
+  for(let i=imagePool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[imagePool[i],imagePool[j]]=[imagePool[j],imagePool[i]];}
+  imageIndex=0;
+}
+
+let imagePool=[],imageIndex=0;
+
+function create(){
+  let side=Math.floor(Math.random()*4),x,y,m=120;
+  if(side===0)x=-m,y=Math.random()*height;
+  if(side===1)x=width+m,y=Math.random()*height;
+  if(side===2)x=Math.random()*width,y=-m;
+  if(side===3)x=Math.random()*width,y=height;
+  let dx=width/2-x,dy=height/2-y,len=Math.hypot(dx,dy),speed=0.6+Math.random()*1.4;
+  let vx=dx/len*speed,vy=dy/len*speed;
+
+  // Первая картинка cat1 с рукой
+  if(!firstImageAdded){
+    firstImageAdded=true;
+    const img=regular.find(i=>i.src.includes('cat1.png'));
+    return {type:'img',img,x:width/2-50,y:height/2,vx:0,vy:0,size:120,rot:0,rs:0,opacity:1,phase:0,fly:false, first:true};
+  }
+
+  if(Math.random()>.5){
+    if(imagePool.length===0) shuffleImages();
+    let img=imagePool[imageIndex++];
+    if(imageIndex>=imagePool.length) shuffleImages();
+    return {type:'img',img,x,y,vx:vx*0.5,vy:vy*0.5,size:85+Math.random()*25,rot:Math.random(),rs:(Math.random()-.5)*.01,opacity:0,phase:Math.random()*6,fly:false};
+  }
+  return {type:'text',text:wishes[Math.floor(Math.random()*wishes.length)],x,y,vx:vx*0.5,vy:vy*0.5,size:45+Math.random()*15,rot:Math.random(),rs:(Math.random()-.5)*.01,opacity:0,phase:Math.random()*6,fly:false};
+}
+
+// START
+function start(){
+  fadeInMusic();
+  for(let i=0;i<35;i++) elements.push(create());
+  loop();
+}
+
+// MUSIC FADE-IN
+function fadeInMusic(){
+  bgMusic.play().catch(()=>{});
+  let vol=0;
+  const fade=setInterval(()=>{vol+=0.005;if(vol>=0.5){vol=0.5;clearInterval(fade);} bgMusic.volume=vol;},50);
+}
+
+// LOOP
+function loop(){update(); draw(); requestAnimationFrame(loop);}
+
+// UPDATE
+function update(){
+  time+=.1; let max=2.2;
+  for(let i=elements.length-1;i>=0;i--){
+    let e=elements[i];
+    e.x+=e.vx;e.y+=e.vy;
+    if(!e.fly){e.vx*=1.002;e.vy*=1.002;}
+    e.vx*=.999;e.vy*=.999;
+    if(e.vx>max)e.vx=max;if(e.vx<-max)e.vx=-max;
+    if(e.vy>max)e.vy=max;if(e.vy<-max)e.vy=-max;
+    e.rot+=e.rs;
+    if(e.opacity<1)e.opacity+=.02;
+    if(e.fly){e.vy-=0.15;e.vx*=0.99;e.rot=0;e.rs=0;} // ускорение скелетов
+    if(e.fly && e.y<-200) elements.splice(i,1);
+    if(!e.fly){if(e.x<0)e.x=width;if(e.x>width)e.x=0;if(e.y<0)e.y=height;if(e.y>height)e.y=0;}
+  }
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.life-=.02;p.size*=.97;});
+  particles=particles.filter(p=>p.life>0);
+  if(elements.length<35) elements.push(create());
+}
+
+// DRAW
+function draw(){
+  ctx.clearRect(0,0,width,height);
+  elements.forEach(e=>{
+    ctx.save(); ctx.globalAlpha=e.opacity; ctx.translate(e.x,e.y); ctx.rotate(e.rot);
+    let scale=1+.25*Math.sin(time*.05+e.phase); let s=e.size*scale;
+    if(e.type==='img') ctx.drawImage(e.img,-s/2,-s/2,s,s);
+    else{ ctx.font=s+"px Great Vibes"; ctx.fillStyle="#ff4da6"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(e.text,0,0);}
+    ctx.restore();
+  });
+  particles.forEach(p=>{ctx.save();ctx.globalAlpha=p.life;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,6.28);ctx.fillStyle="#ff6fa8";ctx.fill();ctx.restore();});
+
+  // HAND рядом с первой картинкой
+  if(!handClicked){
+    const handElem=elements.find(e=>e.first);
+    if(handElem && handImage.complete){
+      const pulse=Math.sin(time*0.1)*5;
+      ctx.drawImage(handImage,handElem.x+50,handElem.y-50+pulse,50,50);
+    }
+  }
+}
+
+// CLICK
+canvas.addEventListener("click",e=>{
+  let rect=canvas.getBoundingClientRect();
+  let x=e.clientX-rect.left;
+  let y=e.clientY-rect.top;
+  let r2=80*80;
+  let candidates=[];
+  elements.forEach((el,i)=>{if(el.fly) return; let dx=x-el.x,dy=y-el.y;if(dx*dx+dy*dy<r2)candidates.push(i);});
+  if(candidates.length){
+    playPop();
+    handClicked=true;
+    let id=candidates[Math.floor(Math.random()*candidates.length)];
+    let el=elements[id];
+    createParticles(el.x,el.y);
+    el.type='img';
+    el.img=skels[Math.floor(Math.random()*skels.length)];
+    el.fly=true;
+    el.vy=-4-Math.random()*3;
+    el.vx=(Math.random()-.5)*1;
+    el.size*=1.25; setTimeout(()=>{el.size/=1.25;},150);
+    setTimeout(()=>{elements.push(create());},600);
+  }
+});
+
+// SPAWN TIMER
+setInterval(()=>{if(elements.length<65) elements.push(create());},4000);
+})();
+</script>
+</body>
+</html>
